@@ -1,0 +1,38 @@
+<ion-header>
+    <ion-toolbar>
+
+        <ion-title>Chat Room</ion-title>
+        <ion-buttons right>
+            <button round item-right ion-button block (click)= "showMemberList()" style="color:white">
+                <ion-icon name="contacts"></ion-icon>
+            </button>
+        </ion-buttons>
+
+    </ion-toolbar>
+</ion-header>
+
+<ion-content style="height: 100%" padding>
+    <div #scrollMe style="overflow-y: scroll; height: 90%;">
+        <!--Chat Bubbles - Added Dynamically-->
+        <div  id= "message-container" *ngFor="let message of chats">
+                <chat-bubble [msg]="message"></chat-bubble>
+        </div>
+
+    </div>
+    <ion-toolbar position="bottom">
+        <form>
+            <ion-item>
+                <ion-input type="text" placeholder = "Enter Message..." [(ngModel)]="chat_input" [ngModelOptions]="{standalone: true}"></ion-input>
+                <button round item-right ion-button block (click)= "send(chat_input)" style="width: 25px">
+                    <ion-icon name="send"></ion-icon>
+                </button>
+            </ion-item>
+        </form>
+    </ion-toolbar>
+
+
+
+
+
+
+</ion-content>

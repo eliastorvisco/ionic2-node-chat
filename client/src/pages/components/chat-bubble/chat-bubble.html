@@ -1,0 +1,19 @@
+
+<div ng-controller = "BubbleCtrl" class = "chat-bubble" [ngClass]="{'user-bubble': isUserBubble, 'member-bubble': !isUserBubble}">
+
+    <p class = "author-name" *ngIf= "isMemberBroadcast" [style.color] = "msg.color">
+        {{msg.author}}
+    </p>
+    <p class = "author-name" *ngIf = "isMemberUnicast" [style.color] = "msg.color">
+        <span class = "unicast-tag">from </span>
+        {{msg.author}}
+    </p>
+    <p class = "author-name" *ngIf = "isUserUnicast">
+        <span class="unicast-tag">to </span>
+        {{msg.receiver}}
+    </p>
+
+    <p class = "text" [ngClass] = "{'user-text': isUserBubble, 'member-text': !isUserBubble}">{{msg.text}}</p>
+    <p class = "time" [ngClass] = "{'user-time': isUserBubble, 'member-time': !isUserBubble}">{{msg.time}}</p>
+
+</div>

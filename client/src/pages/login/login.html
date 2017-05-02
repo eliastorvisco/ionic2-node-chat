@@ -1,0 +1,25 @@
+<ion-header>
+    <ion-toolbar>
+        <ion-buttons left></ion-buttons>
+        <ion-title>Login</ion-title>
+        <ion-buttons right></ion-buttons>
+    </ion-toolbar>
+</ion-header>
+
+<ion-content padding>
+    <ion-card>
+        <ion-card-header>
+            Introduce your Nickname:
+        </ion-card-header>
+        <ion-card-content>
+            <ion-list>
+                <ion-item>
+                    <ion-input placeholder="Nickname" type="text" [(ngModel)]="user"></ion-input>
+                </ion-item>
+            </ion-list>
+            <div padding>
+                <button ion-button block (click)="connect(user)">JOIN CHAT</button>
+            </div>
+        </ion-card-content>
+    </ion-card>
+</ion-content>
