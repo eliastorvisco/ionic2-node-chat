@@ -31,9 +31,8 @@ function getHMSFormat(date) {
 }
 function getClientSocketById(uuid) {
     for(var i=0; i<clients.length; i++)
-        if(clients[i].uuid == uuid)
+        if(clients[i].user.uuid == uuid)
             return clients[i];
-    return null;
 }
 
 
@@ -41,9 +40,11 @@ function getClientSocketById(uuid) {
 //Listener per l'event de connexio.
 socket.on('connection', (clientSocket) => {
     //Declaracio de variables d'usuari
-    var userName = false;
-    var userColor = false;
-    var userId = false;
+    var user;
+
+    //var userName = false;
+    //var user.color = false;
+    //var user.uuid = false;
     var index = false;
 
     //Listener per l'event de recepcio de missatge al clientsocket
@@ -54,41 +55,35 @@ socket.on('connection', (clientSocket) => {
         //Primer missatge enviat per l'usuari. Conte el nom.
 
         if(message.type == 'user-name') {
+            user = {
+                name: message.data,
+                color: getRandomColor(),
+                uuid: uuidV4()
+            }
 
-            userName = message.data;
-            console.log(getHMSFormat(new Date()) + ' ' + userName +
-                        ' has joined the chat');
 
-            userColor = getRandomColor();
-            userId = uuidV4();
+            console.log(getHMSFormat(new Date()) + ' ' + user.name + ' has joined the chat');
 
             //Afegim nova connexió a les llistes
             index = clients.push({
                 socket: clientSocket,
-                uuid: userId
+                user: user
             }) -1;
 
-            members.push({
-                name: userName,
-                uuid: userId
-            });
+            members.push(user);
 
             //Enviem llista de usuaris connectats al nou usuari
             unicast(clientSocket, {
                 type: 'user-params',
                 data: {
-                    color: userColor,
-                    uuid: userId,
+                    user: user,
                     members: members
                 }
             });
             //Indiquem nova connexio als usuaris ja connectats
             broadcast({
                 type: 'new-member',
-                data: {
-                    name: userName,
-                    uuid: userId
-                }
+                data: user
             })
 
         //Missatge Normal. S'envia fent broadcast
@@ -102,17 +97,17 @@ socket.on('connection', (clientSocket) => {
         //Missatge tipus Unicast.
         } else if (message.type == 'unicast') {
 
-            var client = getClientSocketById(message.data.uuid);
-            if(client!=null){
+            var receiver = getClientSocketById(message.data.receiver.uuid);
+            if(receiver!=null){
                 //Enviament del missate al receptor dessignat.
-                unicast(client.socket, {
+                unicast(receiver.socket, {
                     type: 'message',
-                    data: message.data.data
+                    data: message.data
                 });
                 //Confirmacio d'unicast a l'emissor.
                 unicast(clientSocket, {
                     type: 'message',
-                    data: message.data.data
+                    data: message.data
                 });
             }
 
@@ -122,8 +117,8 @@ socket.on('connection', (clientSocket) => {
     //Events de desconnexio de client
     clientSocket.on('disconnect', (clientSocket) => {
 
-        if(userId != false) {
-            console.log((getHMSFormat(new Date()))+ ' ' +  userName + " left the room.");
+        if(user.uuid != false) {
+            console.log((getHMSFormat(new Date()))+ ' ' +  user.name + " left the room.");
             //Avis als usuaris de desconnexio d'un usuari
             broadcast({
                 type: 'client-disconnected',
@@ -136,8 +131,8 @@ socket.on('connection', (clientSocket) => {
     });
 
     clientSocket.on('close', function(clientSocket){
-        if(userId != false) {
-            console.log((getHMSFormat(new Date())) + ' ' + userName + " left the room.");
+        if(user.uuid != false) {
+            console.log((getHMSFormat(new Date())) + ' ' + user.name + " left the room.");
             broadcast({
                 type: 'member-disconnected',
                 data: members[index]

@@ -11,8 +11,8 @@
 </ion-header>
 <ion-content>
     <ion-list  inset>
-        <ion-item *ngFor="let member of members">
-            <p>{{member.name}}</p>
+        <ion-item *ngFor="let member of members" (click)="memberClick(member)">
+            <p [style.color] = "member.color">{{member.name}}</p>
             <p style="color:grey; font-size: 0.7em">{{member.uuid}}</p>
         </ion-item>
     </ion-list>

@@ -29,19 +29,18 @@ export class ChatPage  implements OnInit, AfterViewChecked {
 
     //Declaracio de variables d'usuari
     socket:any;
-    chat_input:string;
-    chats = [];
-    myName:string;
-    myColor:string;
-    myId:string;
+    input:string;
+    messages = [];
+    user:any;
     members = [];
 
 
 
-  constructor(public navCtrl: NavController, public params:NavParams, public modalCtrl: ModalController) {
+
+    constructor(public navCtrl: NavController, public params:NavParams, public modalCtrl: ModalController) {
 
         //Recollim el parametre "nom d'usuari", enviat pel login.
-        this.myName = params.get("user");
+        var name = params.get("user");
 
         //Connexió al servidor
         this.socket = io("http://localhost:7007");
@@ -50,7 +49,7 @@ export class ChatPage  implements OnInit, AfterViewChecked {
         this.socket.on('connect', () => {
 
             console.log((new Date()) + ' Connected to server. Sending Username...');
-            this.serverMsg('user-name', this.myName);
+            this.msgServer('user-name', name);
 
             //Listener de l'event de missatge
             this.socket.on('message', (message) => {
@@ -59,18 +58,18 @@ export class ChatPage  implements OnInit, AfterViewChecked {
                  switch(message.type){
 
                      case 'user-params':
-                         this.myColor = message.data.color;
-                         this.myId = message.data.uuid;
-                         this.members = message.data.members;
-                         break;
+                        this.user = message.data.user;
+                        this.members = message.data.members;
+                        break;
 
                     case 'message':
                         this.addMessage(message.data);
                         break;
 
                     case 'new-member':
-                        if(message.data.uuid != this.myId)
-                            this.addMember(message.data);
+                        let newMember = message.data;
+                        if(newMember.uuid != this.user.uuid)
+                            this.members.push(newMember);
                         break;
 
                     case 'client-disconnected':
@@ -82,68 +81,71 @@ export class ChatPage  implements OnInit, AfterViewChecked {
     }
 
     //Enviament de missatge.
-    send(msg) {
+    send(text) {
         //Expressio Regular: "/u <usuari> <missatge>" -> Unicast
         var myRegexp = /(\/u)+\s+((?:[a-zA-Z0-9][a-zA-Z0-9]+))+\s+(.*$)/g;
         //Array contenidor dels grups de match
-        var match = myRegexp.exec(msg);
-
+        var match = myRegexp.exec(text);
         //Si fem match -> Intentem Unicast a <usuari>
         if(match != null) {
-          if(match[3] == "") return;
-          var member = this.getMemberByName(match[2]);
 
-          if(member != null) {
-              this.unicast(member.uuid, match[3]);
-              this.chat_input = "";
+            var name = match[2];
+            var message = match[3];
+
+            if(message == "") return;
+            var nameMatch = this.getMemberByName(name);
+
+            if(nameMatch.length > 1)
+                this.selectUnicast(nameMatch, message);
+
+            else if (nameMatch.length = 1) {
+                var member = nameMatch[0];
+              if(member != null)
+                this.unicast(member, message);
           }
 
         //Si no fem match -> Broadcast
         } else {
-          if(msg == "") return;
-          this.broadcast(msg);
-          this.chat_input = "";
+          if(text == "") return;
+          this.broadcast(text);
         }
+        this.input = "";
     }
+
+
 
     //Enviament a tot els usuaris
     broadcast(message) {
-
+        console.log(this.user);
       this.socket.emit('message', {
           type: 'broadcast',
           data: {
               time: this.formatAMPM(new Date()),
               text: message,
-              author: this.myName,
-              color: this.myColor,
-              uuid: this.myId,
+              author: this.user,
+              receiver: 'broadcast',
               unicast: false
           }
       });
     }
 
     //Enviament a un usuari determinat
-    unicast(uuid, message) {
+    unicast(member, message) {
 
       this.socket.emit('message', {
           type: 'unicast',
           data: {
-              uuid: uuid,
-              data: {
-                  time: this.formatAMPM(new Date()),
-                  text: message,
-                  author: this.myName,
-                  ruuid: uuid,
-                  color: this.myColor,
-                  uuid: this.myId,
-                  unicast: true
-              }
+              time: this.formatAMPM(new Date()),
+              text: message,
+              author: this.user,
+              receiver: member,
+              unicast: true
           }
       });
     }
 
     //Utilitzat per enviar parametres al Servidor
-    serverMsg(command, param) {
+    msgServer(command, param) {
 
       this.socket.emit('message', {
           type: command,
@@ -151,50 +153,17 @@ export class ChatPage  implements OnInit, AfterViewChecked {
       });
     }
 
-    addMember(member) {
-      this.members.push(member);
-    }
 
-    removeMember(member) {
 
-      var index;
-
-      for(var i = 0; i < this.members.length; i++)
-          if(this.members[i].uuid == member.uuid)
-              index = i;
-
-      this.members.splice(index, 1);
-    }
-
-    getMemberByName(name) {
-
-      for (var i = 0; i < this.members.length; i++)
-          if (this.members[i].name == name)
-              return this.members[i];
-
-      return null;
-
-    }
-
-    getMemberById(uuid) {
-
-      for (var i = 0; i < this.members.length; i++)
-          if (this.members[i].uuid == uuid)
-              return this.members[i];
-
-      return null;
-    }
-
-    //Afegim missatge a la llista de missatges: chats
+    //Afegim missatge a la llista de missatges: messages
     addMessage(message) {
+        console.log(message);
+      var authorIsUser = message.author.uuid == this.user.uuid;
+      var receiver = (message.unicast)? message.receiver: {name: 'broadcast'};
 
-      var authorIsUser = message.uuid == this.myId;
-      var receiver = (message.unicast)? this.getMemberById(message.ruuid).name: "broadcast";
-
-      this.chats.push({
+      this.messages.push({
           author: message.author,
           isUser: authorIsUser,
-          color: message.color,
           text: message.text,
           time: message.time,
           receiver: receiver,
@@ -204,8 +173,48 @@ export class ChatPage  implements OnInit, AfterViewChecked {
 
     //Mostrem llista d'usuaris connectats
     showMemberList(){
-        let modal = this.modalCtrl.create(MemberList, {data: this.members});
+
+        let modal = this.modalCtrl.create(MemberList, {data: this.members, unicast: false});
         modal.present();
+    }
+
+    selectUnicast(members, message){
+        let modal = this.modalCtrl.create(MemberList, {data: members, unicast: true});
+        modal.onDidDismiss(member => {
+
+            if(member != null) {
+
+                this.unicast(member, message);
+            }
+        });
+        modal.present();
+    }
+
+    removeMember(exmember) {
+        var index;
+      for(var i = 0; i < this.members.length; i++)
+          if(this.members[i].uuid == exmember.uuid)
+              index = i;
+
+      this.members.splice(index, 1);
+    }
+
+    getMemberByName(name) {
+        var nameMatch = [];
+        for (var i = 0; i < this.members.length; i++)
+            if (this.members[i].name == name && this.members[i].uuid != this.user.uuid)
+                nameMatch.push(this.members[i]);
+
+        return nameMatch;
+    }
+
+    getMemberById(uuid) {
+
+      for (var i = 0; i < this.members.length; i++)
+          if (this.members[i].uuid == uuid)
+              return this.members[i];
+
+      return null;
     }
 
     formatAMPM(date) {
